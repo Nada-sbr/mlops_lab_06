@@ -4,3 +4,4 @@ __pycache__/
 logs/
 models/
 #data/
+churn-api_v1.tar
