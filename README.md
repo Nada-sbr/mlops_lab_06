@@ -1,220 +1,126 @@
-# Lab3 : Versionnement des données et pipelines ML avec DVC
+# mlops-lab-06
+## Etape 1:
+Cette étape consiste à démarrer un cluster local via Minikube avec le pilote Docker en version v1.28.3. J'ai ensuite créé le namespace dédié churn-mlops pour isoler les ressources du projet, puis configuré le contexte courant sur ce dernier.
 
-## Étape 1 : Initialisation de DVC dans le projet
-###  On Lance l’initialisation de DVC
-Cette commande crée les fondations de DVC dans le  dossier mlops-lab-01. Elle génère un dossier caché .dvc/ qui contient les fichiers de configuration.
-<img width="1822" height="767" alt="image" src="https://github.com/user-attachments/assets/87f26df0-3bc2-4a23-a094-0c67b0808cba" />
+<img width="2044" height="1159" alt="Capture d&#39;écran 2026-01-18 034144" src="https://github.com/user-attachments/assets/8b135f3b-374e-42eb-a6dc-e4b3a4c4ad0c" />
 
+<img width="2006" height="652" alt="Capture d&#39;écran 2026-01-18 034558" src="https://github.com/user-attachments/assets/7305d748-81ea-4e1d-9253-a38076859ccc" />
 
-## Étape 2 : Versionner les données brutes avec DVC
-### On Supprime  data/  de notre .gitignore 
-<img width="1813" height="918" alt="image" src="https://github.com/user-attachments/assets/d377dbe2-1e1f-4b43-b55f-470564666d4f" />
+ La vérification finale confirme que l'environnement est prêt et correctement segmenté, bien qu'aucun Pod ne soit encore déployé.
 
 
-### On Ajoute le dataset au suivi DVC :
-l'exécution de dvc add data/raw.csv permet de calculer l'empreinte numérique du fichier et de le placer dans le cache interne de DVC, tout en créant un fichier de métadonnées raw.csv.dvc
+## Etape 2:
+Objectif : Configurer un environnement isolé et reproductible pour l'API de prédiction.
+isolation via Environnement Virtuel : Création et activation de l'environnement venv_mlops afin d'éviter tout conflit de dépendances avec le système global.
+Mise à jour des outils de gestion : Montée de version de pip
+<img width="1896" height="1126" alt="image" src="https://github.com/user-attachments/assets/bd04aca0-6589-4f90-ae41-7a095c46d10d" />
 
-Parallèlement, DVC met à jour le fichier .gitignore pour exclure le fichier lourd du suivi Git, garantissant ainsi la légèreté du dépôt.
+Gestion rigoureuse des dépendances : Installation des librairies via requirements.txt, incluant FastAPI pour le service web et des versions spécifiques de scikit-learn (1.7.2) et pandas.
+<img width="1719" height="857" alt="image" src="https://github.com/user-attachments/assets/df6a9778-51a1-4cfd-85c0-3fd9708c4818" />
 
-Enfin, le commit Git des fichiers .dvc et .gitignore fige la version exacte des données associée au code, permettant une traçabilité complète sans saturer l'historique du projet.
-<img width="1884" height="735" alt="image" src="https://github.com/user-attachments/assets/793a145f-fd4d-4630-bf6c-b2b49f85005a" />
+## Étape 3 : Créer le dossier des manifests Kubernetes
+Objectif : Organiser l'arborescence du projet pour accueillir les fichiers de configuration (manifests) du cluster.
+Génération du dossier k8s/ à la racine du projet pour centraliser les définitions d'objets Kubernetes
+<img width="1750" height="1422" alt="image" src="https://github.com/user-attachments/assets/61c0f080-aa33-4621-a9e6-64fa29bf8ad5" />
 
-## Étape 3 : Configuration d’un remote DVC
-En créant le dossier dvc_storage:Ce dossier servira de serveur simulé pour stocker physiquement les versions des fichiers volumineux.
-et en l'enregistrant avec dvc remote add, on définisse une destination sécurisée pour archiver les données en dehors de Git.
 
-On a  ajouté le fichier .dvc/config à Git et effectué un commit.
-<img width="1879" height="897" alt="image" src="https://github.com/user-attachments/assets/5af6dedf-f52c-47d1-846f-883028457490" />
+## Étape 4 : Construire l’image Docker (tag versionné)
 
-## Étape 4 : Push des données dans le remote DVC
-On Exécuton de la commande dvc push .DVC télécharge physiquement le contenu de fichiers (raw.csv) depuis la cache local vers le dossier dvc_storage. 
-Le terminal confirme "1 file pushed".
+<img width="1854" height="1036" alt="image" src="https://github.com/user-attachments/assets/d800c2c0-3a6c-4554-af9e-ab2292a72e64" />
+<img width="2039" height="345" alt="image" src="https://github.com/user-attachments/assets/bb926359-3631-43f0-ab63-42115d216c2c" />
 
-<img width="1887" height="258" alt="image" src="https://github.com/user-attachments/assets/59cec189-485c-49de-9771-6ebaadf98919" />
 
-On observe dans l'arborescence de fichiers que le dossier dvc_storage se remplit de sous-dossiers (nommés 3d, 05, 7e). Ce sont des fichiers de hash
-<img width="1267" height="611" alt="image" src="https://github.com/user-attachments/assets/f0fc4ca2-9a22-4f40-8dd5-ef1c25cf3654" />
-## Étape 5 : simulation d’une collaboration : supprimer localement et récupérer depuis DVC
+## Étape 5 : Charger explicitement l’image dans Minikube
+<img width="1998" height="403" alt="image" src="https://github.com/user-attachments/assets/080b8b71-e285-45e7-bdb0-e76e52b8f3c6" />
 
-Ona supprimé le fichier physique avec del data\raw.csv. La commande ls data/ confirme que le fichier a disparu, ne laissant que le petit fichier raw.csv.dvc.
 
- En exécutant dvc pull, DVC va chercher le contenu correspondant au hash stocké dans le fichier .dvc depuis le  "remote storage" (dvc_storage)
+Étape 6 : Deployment Kubernetes pour l’API churn
+<img width="2011" height="1008" alt="Capture d&#39;écran 2026-01-18 035308" src="https://github.com/user-attachments/assets/fa4a1507-4597-41fb-849c-fdf918ab5273" />
 
-<img width="1871" height="983" alt="image" src="https://github.com/user-attachments/assets/99ceee8f-8223-4e97-8705-6b5040064c2d" />
+<img width="1751" height="1366" alt="image" src="https://github.com/user-attachments/assets/1fe56ece-65ce-493d-a596-079a5d57303c" />
 
+<img width="2095" height="1071" alt="Capture d&#39;écran 2026-01-18 035740" src="https://github.com/user-attachments/assets/5552254d-8e7c-4cb0-ac09-0cdad70af164" />
 
-## Étape 6 : Création d’un pipeline reproductible dvc.yaml
 
-Ajout des étapes prepare, train, et evaluate via dvc stage add. 
-Pour automatisez le flux de travail
+Étape 7 : Exposer l’API via un Service NodePort
+<img width="2050" height="478" alt="Capture d&#39;écran 2026-01-18 035854" src="https://github.com/user-attachments/assets/413364b2-2957-4b09-a54b-69ec16027188" />
 
-<img width="1886" height="1715" alt="image" src="https://github.com/user-attachments/assets/8a2871bc-963c-4cea-8370-e1d1eff73b87" />
+<img width="1824" height="976" alt="image" src="https://github.com/user-attachments/assets/e705f2d1-1523-43e9-9dad-6537398a3e7d" />
 
-## Étape 7 : Reproduire automatiquement tout le pipeline
+<img width="2098" height="1188" alt="Capture d&#39;écran 2026-01-18 040027" src="https://github.com/user-attachments/assets/f69d1dbe-7e05-4c61-9893-3d308dbc8260" />
 
 
-Le pipeline est exécuté avec succès, produisant des métriques (accuracy, precision, etc.). Le fichier dvc.lock est mis à jour pour enregistrer l'état exact des résultats produits.
+<img width="2037" height="1376" alt="Capture d&#39;écran 2026-01-18 040752" src="https://github.com/user-attachments/assets/4d646e51-52a5-4fc5-8e1e-5818d0186665" />
 
-<img width="1919" height="1436" alt="image" src="https://github.com/user-attachments/assets/c9aa1bc9-42e0-4865-b353-11df05290708" />
 
 
-<img width="1915" height="1535" alt="image" src="https://github.com/user-attachments/assets/be1507a3-a8b1-42fc-a10c-b8309750df53" />
+<img width="1257" height="1216" alt="image" src="https://github.com/user-attachments/assets/dc2b2388-fe44-479a-a4a3-3a12813374b8" />
 
-## Conclusion
 
-Ce lab a permis de démontrer l'importance de DVC (Data Version Control) comme pilier d'un projet MLOps moderne. En intégrant DVC à notre flux de travail Git, nous avons résolu les défis majeurs liés à la gestion des projets de science des données.
+Étape 8 : Injecter la configuration MLOps via ConfigMap
 
-Les points clés retenus sont :
+<img width="2059" height="1098" alt="Capture d&#39;écran 2026-01-18 041303" src="https://github.com/user-attachments/assets/27f9a27c-07a8-4c31-9c65-d4df8fbf213d" />
 
-Gestion optimisée des données : Nous avons appris à séparer le code (géré par Git) des données volumineuses (gérées par DVC), garantissant un dépôt léger et performant.
+<img width="970" height="563" alt="image" src="https://github.com/user-attachments/assets/aafaf3a5-1ac1-4084-bfdb-d66bac1f4d19" />
+<img width="2026" height="869" alt="image" src="https://github.com/user-attachments/assets/bde27877-b126-4cfa-b8af-4be8cd1941d0" />
 
-Sécurité et Collaboration : La mise en place d'un "remote storage" et l'utilisation des commandes push et pull assurent que les datasets sont sauvegardés et accessibles à tous les collaborateurs de manière identique.
+On Modifie k8s/deployment.yaml pour injecter ces variables dans le conteneur :
+<img width="2060" height="909" alt="Capture d&#39;écran 2026-01-18 041432" src="https://github.com/user-attachments/assets/581f9a97-b380-4bb8-bf64-b24182eadc04" />
 
-Reproductibilité Totale : Grâce à la définition d'un pipeline dans dvc.yaml et au verrouillage des versions dans dvc.lock, nous pouvons désormais garantir que n'importe quelle étape (préparation, entraînement ou évaluation) peut être reproduite avec les mêmes résultats.
 
-Traçabilité : Le lien permanent entre une version du code et une version spécifique des données permet un audit complet du modèle, ce qui est essentiel pour le déploiement en production.
 
+Étape 9 : Gérer les secrets (MONITORING_TOKEN)
+<img width="2018" height="1176" alt="Capture d&#39;écran 2026-01-18 041523" src="https://github.com/user-attachments/assets/be589857-6a74-434e-9407-826e1ca13e61" />
 
-# Lab 4 : Mise en place d’un pipeline CI/CD complet pour un projet Machine Learning
-## Étape 1 : Créer le dépôt GitHub et connecter le remote
-L'objectif de cette étape est d'établir le pont entre votre travail local (déjà versionné avec Git et DVC) et la plateforme GitHub pour permettre l'automatisation CI/CD.
-Cette étape est déja realisé 
+<img width="1311" height="742" alt="image" src="https://github.com/user-attachments/assets/2e066f5b-f5b7-4a6a-9746-2962260a3a78" />
 
-## Étape 2 : Définir les secrets GitHub
+On Ajouter la variable d’environnement dans k8s/deployment.yaml
 
-Cette étape consiste à configurer l'environnement du projet sur GitHub pour que les futurs pipelines d'automatisation (CI/CD via GitHub Actions) puissent fonctionner correctement et en toute sécurité.
+<img width="2029" height="892" alt="image" src="https://github.com/user-attachments/assets/0a7a4bef-e269-4808-a674-9bea28400d87" />
 
-Variables : Pour les paramètres de configuration qui ne sont pas secrets
-<img width="1242" height="1042" alt="image" src="https://github.com/user-attachments/assets/150d71b5-f7c9-4676-8779-e0601b98d869" />
-Secrets : Pour les données sensibles (mots de passe, clés API)
-<img width="1221" height="821" alt="image" src="https://github.com/user-attachments/assets/2a465481-1e9a-4089-95cd-1396197a6399" />
-## Étape 3 : Créer le workflow CI/CD
-Cette étape consiste en la rédaction du manifeste d'automatisation via un fichier de configuration YAML pour GitHub Actions. Le processus définit un scénario d'exécution systématique : à chaque soumission de code sur le dépôt, un serveur virtuel est instancié pour préparer l'environnement de travail. La configuration inclut l'installation de la version de Python spécifiée par la variable PY_VERSION ainsi que la mise en place d'un mécanisme de mise en cache des dépendances afin d'optimiser les temps d'exécution. Ce dispositif constitue le socle de l'intégration continue (CI).
-En résumé, nous avons créé le "cerveau" de notre intégration continue (CI) pour que notre pipeline DVC s'exécute tout seul
-<img width="2291" height="2053" alt="image" src="https://github.com/user-attachments/assets/e555ee58-9412-40fb-bf1e-c1a8633e402f" />
 
-## Étape 4 : Commit et push
 
-Cette étape valide l'automatisation complète du cycle de vie du modèle via GitHub Actions, confirmant le succès des jobs d'intégration (CI) et de déploiement (CD). L'exécution automatique du pipeline en une minute démontre une gestion efficace des dépendances et du cache, garantissant la reproductibilité du code. 
-<img width="1899" height="1530" alt="image" src="https://github.com/user-attachments/assets/d6a7387d-4805-451c-ae15-dccc7fcfcafa" />
+Étape 10 : Mise en place des endpoints de santé et des probes Kubernetes pour l’API Churn
 
-La génération d'artefacts en fin de processus assure la persistance et la disponibilité des modèles et des métriques de performance pour la production
+<img width="1986" height="1457" alt="image" src="https://github.com/user-attachments/assets/9225f4da-b7c1-4ca9-87e3-52ab49b6b4a4" />
 
-<img width="1883" height="1194" alt="image" src="https://github.com/user-attachments/assets/4dc43a11-6958-4040-9e8f-a36edf0a7a4f" />
-### Conclusion 
-Ce lab a permis de mettre en place une infrastructure MLOps complète, intégrant le versionnement des données avec DVC et l automatisation de cycles de vie via GitHub Actions. La création d'un pipeline reproductible et la configuration de workflows CI/CD garantissent désormais que chaque modification du code ou des données est automatiquement testée, validée et prête au déploiement. 
+<img width="2027" height="799" alt="Capture d&#39;écran 2026-01-18 042149" src="https://github.com/user-attachments/assets/1b3c454f-544c-4435-acb5-c821c84385ae" />
 
-# Lab 5 : Du Notebook au Déploiement Conteneurisé d’un Modèle de Machine Learning
+<img width="2304" height="238" alt="Capture d&#39;écran 2026-01-18 042209" src="https://github.com/user-attachments/assets/723ef6ee-dc5b-4b52-a3d6-bf5e149d5176" />
 
-## Étape 1 : Vérifier l’installation de Docker
 
-<img width="1780" height="246" alt="image" src="https://github.com/user-attachments/assets/a58acb3e-76e2-4090-ad57-e90d0ae5fe9d" />
+Étape 11 : Ajouter les probes (liveness / readiness / startup)
 
-## Étape 2 : Lancer un serveur Nginx dans un conteneur
-Onlancé un serveur Nginx en mode détaché (-d) sur le port local 8080
-La commande docker ps montre que le conteneur nommé "demo-nginx" est actif  et qu'il redirige correctement le trafic du port 8080 vers le port 80 du conteneur.
-puis on a correctement terminé le test en arrêtant (stop) puis en supprimant (rm) le conteneur.
+<img width="2274" height="1062" alt="Capture d&#39;écran 2026-01-18 042305" src="https://github.com/user-attachments/assets/99b90793-e0e6-4335-a196-cf3915349f22" />
 
 
-<img width="1903" height="521" alt="image" src="https://github.com/user-attachments/assets/6d99219a-40ed-4fe8-8d5b-71f1f32a7704" />
-<img width="1892" height="731" alt="image" src="https://github.com/user-attachments/assets/5926a845-b501-4a3d-93e0-ff2a00cfa892" />
+Étape 12 : Volume persistant pour registry + logs
 
-## Étape 3 : Ouvrir un shell Linux isolé dans un conteneur
+<img width="2083" height="458" alt="image" src="https://github.com/user-attachments/assets/16c8e05e-c33c-4ebf-bacf-73c72739fdf8" />
 
-l'isolation en lançant un système Ubuntu complet à l'intérieur d'un conteneur interactif sans affecter notre machine hôte
-<img width="1882" height="1877" alt="image" src="https://github.com/user-attachments/assets/ae8fc4ff-795b-4e48-8792-ed84157d852c" />
+<img width="1193" height="811" alt="image" src="https://github.com/user-attachments/assets/f194eacc-3cdc-48c3-a794-533a631f49a1" />
 
-<img width="1882" height="1916" alt="image" src="https://github.com/user-attachments/assets/d558b932-785b-4b6e-b20a-67e1177fc241" />
+<img width="2240" height="723" alt="image" src="https://github.com/user-attachments/assets/f0fe547b-90e8-4053-8450-83b9f920361b" />
 
- Vérifions que le conteneur existe toujours mais est arrêté :
 
-<img width="1879" height="1648" alt="image" src="https://github.com/user-attachments/assets/0352ac0b-897c-44f9-9a47-796adadd1187" />
+<img width="1791" height="1365" alt="image" src="https://github.com/user-attachments/assets/a8bf70e2-a659-43a9-a696-bb60f4b2bb05" />
 
-On Supprime ce conteneur
+<img width="2293" height="607" alt="image" src="https://github.com/user-attachments/assets/5c8d399a-e032-4adf-9d10-999178333df6" />
 
-<img width="1923" height="648" alt="image" src="https://github.com/user-attachments/assets/e63c6382-4bad-4b7e-b18b-d0d7a0977199" />
 
-## Étape 4 : Comprendre la structure d’une commande docker run
-On a testé le cycle de vie complet d'un conteneur Docker en utilisant l'image Nginx
-Le terminal affiche ule Container ID . Cela confirme que le conteneur est opérationnel
-on a lancé l'arrêt au conteneur.il  existe toujours surle disque, mais il ne consomme plus de processeur ni de mémoire vive puis on a effacé définitivement l'instance du conteneur.
-<img width="1908" height="428" alt="image" src="https://github.com/user-attachments/assets/b10d83df-2e49-4c92-b59c-081952fe28da" />
 
+Étape 13 : NetworkPolicy
 
-## Étape 5 : Conteneuriser l’API churn du projet mlops-lab-01
+<img width="2278" height="1011" alt="Capture d&#39;écran 2026-01-18 042831" src="https://github.com/user-attachments/assets/8c7f2601-1871-413e-9299-1eb6eb225619" />
 
-Exécution de la commande d'activation du venv : .\venv_mlops\Scripts\activate.
-(venv_mlops) apparaît dans le terminal, confirmant que les dépendances spécifiques au projet (FastAPI, Uvicorn, Scikit-Learn, etc.) sont isolées et prêtes à être utilisées.
+<img width="1448" height="970" alt="image" src="https://github.com/user-attachments/assets/adde261e-0253-4b6f-8096-4a81b967c3d1" />
 
-## Étape 6 : Créer un fichier requirements.txt pour l’image Docker
-on a préparé la liste des dépendances nécessaires au fonctionnement
-<img width="1547" height="1233" alt="image" src="https://github.com/user-attachments/assets/1a434f45-c040-4474-b9a1-d1c5a065379e" />
 
-## Étape 7 : Créer un Dockerfile pour l’API churn
-On a créé le Dockerfile, un fichier de configuration qui définit chaque couche de l'environnement nécessaire
-<img width="1998" height="1431" alt="image" src="https://github.com/user-attachments/assets/7a03b757-c644-4650-9455-abad19a55f16" />
+Étape 14 : Vérifications finales
+<img width="2403" height="943" alt="Capture d&#39;écran 2026-01-18 043005" src="https://github.com/user-attachments/assets/4e1b4950-bb5e-4e5a-a62f-0f97c11ce936" />
 
-## Étape 8 :Préparer un modèle actif avant de construire l’image
-On a effectué une vérification pour s'assurer que l'image Docker contiendra un modèle valide et prêt pour la production.
-<img width="1863" height="1947" alt="image" src="https://github.com/user-attachments/assets/9532d1fa-1c8d-4347-a882-4bd98877f94b" />
+<img width="2063" height="463" alt="Capture d&#39;écran 2026-01-18 031857" src="https://github.com/user-attachments/assets/de4157d5-7bfe-4320-90a9-13dbc8c4e01f" />
 
-## Étape 9 : Construire l’image Docker du projet churn
 
-<img width="1895" height="1904" alt="image" src="https://github.com/user-attachments/assets/86436cf2-7c1c-4ad0-b7c4-680b4eaccb4a" />
-
-## Étape 10 : Lancer l’API churn dans un conteneur
-Cette étape  confirme que l'ensemble de la chaîne (données, modèle, code et infrastructure) fonctionne parfaitement.
-### Test de santé (/health)
-Le système renvoie un StatusCode : 200 OK. Le corps de la réponse JSON indique que le modèle actif
-churn_model_v1_20260112_081303.joblib). Cela prouve que le conteneur a correctement intégré le registre de modèles.
-### Test de prédiction (/predict)
-On a soumis une requête POST avec des données d'entrée et L'API a répondu avec succès 
-<img width="1882" height="348" alt="image" src="https://github.com/user-attachments/assets/3f800a0b-708f-4f03-9422-a587bd25a3b2" />
-
-<img width="1872" height="1046" alt="image" src="https://github.com/user-attachments/assets/988edc95-39c0-4b57-9d94-40607437c282" />
-
-<img width="1759" height="1800" alt="image" src="https://github.com/user-attachments/assets/8e51debb-c098-405e-8928-0ab4d6156867" />
-
-## Étape 11 : Vérifier les logs générés à l’intérieur du conteneur
-
-
-<img width="1854" height="1456" alt="image" src="https://github.com/user-attachments/assets/43fbca99-d2fa-4f5f-96c2-8ffe30cf601b" />
-
-## Étape 12 : Orchestration locale avec Docker Compose
-On a créé le fichier docker-compose.yml, qui agit comme un "manuel d'instructions" permanent pour Docker. Il centralise tous les paramètres (ports, noms, variables d'environnement) en un seul endroit
-
-<img width="2056" height="1823" alt="image" src="https://github.com/user-attachments/assets/73627db5-9736-4691-b2cd-a5da41fd4748" />
-
-## Étape 13 : Démarrer l’API via Docker Compose
-On a utilisé la commande docker compose up pour lancer l'ensemble des services 
-
-Démarrage du service : Le terminal montre que le conteneur churn-api-compose a été créé et que le serveur Uvicorn a démarré avec succès.
-
-Test de santé (/health) : Une requête curl confirme que l'API est opérationnelle  et utilise le modèle actif churn_model_v1_20260112_083455.joblib.
-
-Test de prédiction (/predict) : On a envoyé une requête POST simulant un profil client. L'API a renvoyé une prédiction de churn de 0 (pas de churn) avec une probabilité de 0.25 .
-<img width="1845" height="831" alt="image" src="https://github.com/user-attachments/assets/514b5429-41dc-4b32-8c66-e49644a87c43" />
-
-<img width="1861" height="1187" alt="image" src="https://github.com/user-attachments/assets/590afe12-fa72-4fe3-9f4e-fd9e50448d42" />
-
-
-<img width="1912" height="1691" alt="image" src="https://github.com/user-attachments/assets/c11c3e16-6a56-40ba-bc53-cac08b5038f3" />
-
-Étape 14 : lancer les services en arrière-plan et observer les logs
-Cette étape a consisté à simuler un environnement de production en lançant le service en arrière-plan avec docker compose up -d. On a utilisé docker compose logs -f pour surveiller en temps réel l'activité de l'API sans bloquer le terminal.
-Les tests finaux ont confirmé que les requêtes /health et /predict sont traitées avec succès, avec une latence de 4.5 ms et une probabilité de churn précise. 
-Enfin, la commande docker compose down a permis de nettoyer proprement l'infrastructure.
-
-<img width="1927" height="2033" alt="image" src="https://github.com/user-attachments/assets/662fb26d-399f-4933-96cd-a0aff1d751f5" />
-
-## Étape 15 : lier Docker Compose au reste du cours (Git + DVC)
-
-Versionnement du déploiement : On a utilisé git add pour inclure les fichiers de configuration de l'infrastructure (Dockerfile, docker-compose.yml, requirements.txt) dans le suivi Git. Le commit final, "feat: ajout conteneurisation Docker de l'API churn", verrouille la capacité de déploiement dans l'historique du projet.
-<img width="1925" height="894" alt="image" src="https://github.com/user-attachments/assets/48b3ee46-9ca7-4b76-a8bb-e875880f57b0" />
-
-## Conclusion
-
-Le Lab 5 a permis d'unifier Git, DVC et Docker pour créer une infrastructure MLOps complète, portable et totalement auditable. En encapsulant l'API et son modèle performant  dans un conteneur orchestré par Docker Compose, on garantit un déploiement fiable et reproductible sur n'importe quel serveur. Cette étape assure une traçabilité totale, liant chaque version du code à une version spécifique des données et du modèle grâce aux logs persistants.
-
-
+<img width="2276" height="640" alt="image" src="https://github.com/user-attachments/assets/7d478fd4-96a5-4eb2-8545-57c5e8ab29f4" />
 
